@@ -17,6 +17,174 @@ private:
     int nr_arce;
     static Graf* graf;
 
+
+    // Support functions
+
+    void DF(const int i,const vector<int> arce[],bool vizitat[])
+    {
+        vizitat[i] = true;
+        int size_arce = arce[i].size();
+        for (int j=0;j<size_arce;j++)
+        {
+            int nod_vec = arce[i][j];
+            if (!vizitat[nod_vec])
+                DF(nod_vec,arce,vizitat);
+        }
+    }
+
+    void DF2(const int n,const int fn,const int number,vector<int> arce[],int dfn[],int low[],stack<pair<int,int>> &Stiva,vector <vector <int>> &Comp)
+    {
+        dfn[n] = low[n] = number;
+        int size_vec = arce[n].size();
+        for (int i=0;i<size_vec;i++)
+        {
+            int vec_crt = arce[n][i];
+            if (vec_crt == fn) continue; // Doresc sa ma duc doar in fii lui n, nu inapoi in tatal sau
+            if (dfn[vec_crt] == -1)
+            {
+                Stiva.push(make_pair(n,vec_crt)); // Pun muchia pe stiva
+                DF2(vec_crt,n,number+1,arce,dfn,low,Stiva,Comp); // Parcurg mai departe in adancime
+                low[n] = min(low[n],low[vec_crt]);
+                if (low[vec_crt] >= dfn[n])
+                    Add_Comp(n,vec_crt,Stiva,Comp); // Am gasit un nod de articulatie => Introducem componenta biconexa si
+                                                    // scoatem de pe stiva muchiile care fac parte din ea
+            }
+            else low[n] = min(low[n],dfn[vec_crt]);
+        }
+    }
+
+    void Add_Comp(const int x,const int y,stack<pair<int,int>> &Stiva,vector <vector <int>> &Comp)
+    {
+        vector<int> Comp_bcnx;
+        int nx,ny;
+        do
+        {
+            nx = Stiva.top().first;
+            ny = Stiva.top().second;
+            Stiva.pop();
+            Comp_bcnx.push_back(nx);
+            Comp_bcnx.push_back(ny);
+
+        }while(nx != x || ny != y); // Scoatem inclusiv muchia X Y
+        Comp.push_back(Comp_bcnx);
+    }
+
+    void Vizita(const int n,bool vizitat[],const vector <int> arce[],stack <int> &L) // DFS-ul grafului ( Vizitat false -> true )
+    {
+        if (!vizitat[n])
+        {
+            vizitat[n] = true;
+            int size_n = arce[n].size();
+            for (int i=0;i<size_n;i++)
+            {
+                Vizita(arce[n][i],vizitat,arce,L);
+            }
+            L.push(n);
+        }
+    }
+
+    void Asignare(const int n,stack <int> &L,bool vizitat[],const vector <int> arce_transpuse[],int &nr_comp,vector<int> Comp[]) // DFS-ul grafului transpus ( Vizitat true -> false )
+    {
+        vizitat[n] = false;
+        Comp[nr_comp].push_back(n);
+
+        int size_n = arce_transpuse[n].size();
+        for (int i=0;i<size_n;i++)
+        {
+            int nod_vcn = arce_transpuse[n][i];
+            if (vizitat[nod_vcn])
+            {
+                Asignare(nod_vcn,L,vizitat,arce_transpuse,nr_comp,Comp);
+            }
+        }
+    }
+
+    void DF3(const int n,bool vizitat[],int dfn[],int low[],const vector <int> arce[],vector<pair<int,int>> &muchii_critice)
+    {
+        vizitat[n] = 1;
+        low[n] = dfn[n];
+
+        int size_n = arce[n].size();
+        for (int i=0;i<size_n;i++)
+        {
+            int nr_vcn = arce[n][i];
+            if (!vizitat[nr_vcn])
+            {
+                dfn[nr_vcn] = dfn[n] + 1;
+                DF3(nr_vcn,vizitat,dfn,low,arce,muchii_critice);
+
+                low[n] = min(low[n],low[nr_vcn]);
+                if (low[nr_vcn] > dfn[n])
+                {
+                    muchii_critice.push_back(make_pair(n,nr_vcn));
+                }
+            }
+            else if (dfn[nr_vcn] < dfn[n] - 1)
+            {
+                low[n] = min(low[n],dfn[nr_vcn]);
+            }
+        }
+    }
+
+    void Update_Cost(const int n,const vector <pair<int,int>> muchii[],int costuri[],int tati[])
+    {
+        int n_size = muchii[n].size();
+        for (int i=0;i<n_size;i++)
+        {
+            int vecin = muchii[n][i].first;
+            int cost = muchii[n][i].second;
+            if (costuri[vecin] >= cost)
+            {
+                costuri[vecin] = cost;
+                tati[vecin] = n;
+            }
+        }
+    }
+
+    void Shift_Up(int n,int heap[],const int costuri[],int poz_in_heap[])
+    {
+        while (n/2 && costuri[heap[n]] < costuri[heap[n/2]])
+        {
+            swap(heap[n],heap[n/2]);
+            swap(poz_in_heap[heap[n]],poz_in_heap[heap[n/2]]);
+            n/=2;
+        }
+    }
+
+    void Shift_Down(int n,int heap[],const int costuri[],int poz_in_heap[],const int heap_lenght)
+    {
+        while ((n*2 <= heap_lenght && costuri[heap[n]] > costuri[heap[n*2]])||(n*2+1 <= heap_lenght && costuri[heap[n]] > costuri[heap[n*2+1]]))
+        {
+            if (costuri[heap[n*2]] < costuri[heap[n*2+1]] || n*2+1 > heap_lenght)
+            {
+                swap(heap[n],heap[n*2]);
+                swap(poz_in_heap[heap[n]],poz_in_heap[heap[n*2]]);
+                n*=2;
+            }
+            else
+            {
+                swap(heap[n],heap[n*2+1]);
+                swap(poz_in_heap[heap[n]],poz_in_heap[heap[n*2+1]]);
+                n = n*2+1;
+            }
+        }
+    }
+
+    void Update_Cost2(const int n,const vector <pair<int,int>> muchii[],int costuri[],int tati[])
+    {
+        int n_size = muchii[n].size();
+        for (int i=0;i<n_size;i++)
+        {
+            int vecin = muchii[n][i].first;
+            int cost = muchii[n][i].second;
+            if (costuri[vecin] > cost + costuri[n])
+            {
+                costuri[vecin] = cost + costuri[n];
+                tati[vecin] = n;
+            }
+        }
+    }
+
 public:
 
     static Graf *GetGraf();
@@ -125,18 +293,6 @@ public:
         fout.close();
     }
 
-    void DF(int i,vector<int> arce[],bool vizitat[])
-    {
-        vizitat[i] = true;
-        int size_arce = arce[i].size();
-        for (int j=0;j<size_arce;j++)
-        {
-            int nod_vec = arce[i][j];
-            if (!vizitat[nod_vec])
-                DF(nod_vec,arce,vizitat);
-        }
-    }
-
     // Biconex
 
     void Biconex()
@@ -181,43 +337,6 @@ public:
 
         fin.close();
         fout.close();
-    }
-
-    void DF2(int n,int fn,int number,vector<int> arce[],int dfn[],int low[],stack<pair<int,int>> &Stiva,vector <vector <int>> &Comp)
-    {
-        dfn[n] = low[n] = number;
-        int size_vec = arce[n].size();
-        for (int i=0;i<size_vec;i++)
-        {
-            int vec_crt = arce[n][i];
-            if (vec_crt == fn) continue; // Doresc sa ma duc doar in fii lui n, nu inapoi in tatal sau
-            if (dfn[vec_crt] == -1)
-            {
-                Stiva.push(make_pair(n,vec_crt)); // Pun muchia pe stiva
-                DF2(vec_crt,n,number+1,arce,dfn,low,Stiva,Comp); // Parcurg mai departe in adancime
-                low[n] = min(low[n],low[vec_crt]);
-                if (low[vec_crt] >= dfn[n])
-                    Add_Comp(n,vec_crt,Stiva,Comp); // Am gasit un nod de articulatie => Introducem componenta biconexa si
-                                                    // scoatem de pe stiva muchiile care fac parte din ea
-            }
-            else low[n] = min(low[n],dfn[vec_crt]);
-        }
-    }
-
-    void Add_Comp(const int x,const int y,stack<pair<int,int>> &Stiva,vector <vector <int>> &Comp)
-    {
-        vector<int> Comp_bcnx;
-        int nx,ny;
-        do
-        {
-            nx = Stiva.top().first;
-            ny = Stiva.top().second;
-            Stiva.pop();
-            Comp_bcnx.push_back(nx);
-            Comp_bcnx.push_back(ny);
-
-        }while(nx != x || ny != y); // Scoatem inclusiv muchia X Y
-        Comp.push_back(Comp_bcnx);
     }
 
     // Comp Tare Conexe
@@ -280,36 +399,6 @@ public:
 
         fin.close();
         fout.close();
-    }
-
-    void Vizita(int n,bool vizitat[],vector <int> arce[],stack <int> &L) // DFS-ul grafului ( Vizitat false -> true )
-    {
-        if (!vizitat[n])
-        {
-            vizitat[n] = true;
-            int size_n = arce[n].size();
-            for (int i=0;i<size_n;i++)
-            {
-                Vizita(arce[n][i],vizitat,arce,L);
-            }
-            L.push(n);
-        }
-    }
-
-    void Asignare(int n,stack <int> &L,bool vizitat[],vector <int> arce_transpuse[],int &nr_comp,vector<int> Comp[]) // DFS-ul grafului transpus ( Vizitat true -> false )
-    {
-        vizitat[n] = false;
-        Comp[nr_comp].push_back(n);
-
-        int size_n = arce_transpuse[n].size();
-        for (int i=0;i<size_n;i++)
-        {
-            int nod_vcn = arce_transpuse[n][i];
-            if (vizitat[nod_vcn])
-            {
-                Asignare(nod_vcn,L,vizitat,arce_transpuse,nr_comp,Comp);
-            }
-        }
     }
 
     // Havel - Hakimi
@@ -437,33 +526,6 @@ public:
         fout.close();
     }
 
-    void DF3(int n,bool vizitat[],int dfn[],int low[],vector <int> arce[],vector<pair<int,int>> &muchii_critice)
-    {
-        vizitat[n] = 1;
-        low[n] = dfn[n];
-
-        int size_n = arce[n].size();
-        for (int i=0;i<size_n;i++)
-        {
-            int nr_vcn = arce[n][i];
-            if (!vizitat[nr_vcn])
-            {
-                dfn[nr_vcn] = dfn[n] + 1;
-                DF3(nr_vcn,vizitat,dfn,low,arce,muchii_critice);
-
-                low[n] = min(low[n],low[nr_vcn]);
-                if (low[nr_vcn] > dfn[n]) // Muchie critica
-                {
-                    muchii_critice.push_back(make_pair(n,nr_vcn));
-                }
-            }
-            else if (dfn[nr_vcn] < dfn[n] - 1)
-            {
-                low[n] = min(low[n],dfn[nr_vcn]);
-            }
-        }
-    }
-
     // Sortare topologica
 
     void SrtTop()
@@ -521,10 +583,272 @@ public:
         fout.close();
     }
 
+    // APM - Prim
+
+    void Prim()
+    {
+        ifstream fin("apm.in");
+        ofstream fout("apm.out");
+
+        fin>>this->nr_varfuri>>this->nr_arce;
+
+        vector <pair<int,int>> muchii[nr_varfuri+2];
+        vector <pair<int,int>> muchii_util;
+        int heap[nr_varfuri+2];
+        int poz_in_heap[nr_varfuri+2];
+        int heap_lenght = 0;
+        int costuri[nr_varfuri+2];
+        int tati[nr_varfuri+2];
+        int cost_total = 0;
+        for (int i=1;i<=nr_varfuri;i++)
+        {
+            costuri[i] = 1001;
+            tati[i] = -1;
+        }
+
+        int a,b,c;
+        for (int i=0;i<this->nr_arce;i++)
+        {
+            fin>>a>>b>>c;
+            muchii[a].push_back(make_pair(b,c));
+            muchii[b].push_back(make_pair(a,c));
+        }
+
+        costuri[1] = 0;
+        Update_Cost(1,muchii,costuri,tati);
+
+        for (int i=2;i<=nr_varfuri;i++) // Am ales 1 ca sursa
+        {
+            heap_lenght++;
+            heap[heap_lenght] = i;
+            poz_in_heap[i] = heap_lenght;
+            Shift_Up(heap_lenght,heap,costuri,poz_in_heap);
+        }
+
+        for (int i=2;i<=nr_varfuri;i++)
+        {
+            int rad_crt = heap[1];
+            swap(heap[1],heap[heap_lenght]);
+            swap(poz_in_heap[heap[1]],poz_in_heap[heap[heap_lenght]]);
+            heap_lenght--;
+            Shift_Down(1,heap,costuri,poz_in_heap,heap_lenght);
+            poz_in_heap[rad_crt] = -1;
+
+            Update_Cost(rad_crt,muchii,costuri,tati);
+            cost_total+=costuri[rad_crt];
+            muchii_util.push_back(make_pair(rad_crt,tati[rad_crt]));
+
+            int rad_crt_vec = muchii[rad_crt].size();
+            for (int j=0;j<rad_crt_vec;j++)
+            {
+                int vec_crt = muchii[rad_crt][j].first;
+                if (poz_in_heap[vec_crt] != -1)
+                    Shift_Up(poz_in_heap[vec_crt],heap,costuri,poz_in_heap);
+            }
+        }
+
+        int nr_muchii_util = muchii_util.size();
+        fout<<cost_total<<"\n"<<nr_muchii_util<<"\n";
+        for (int i=0;i<nr_muchii_util;i++)
+        {
+            fout<<muchii_util[i].first<<" "<<muchii_util[i].second<<"\n";
+        }
+
+        fin.close();
+        fout.close();
+    }
+
+    // Dijkstra
+
+    void Dijkstra()
+    {
+        ifstream fin("dijkstra.in");
+        ofstream fout("dijkstra.out");
+
+        fin>>this->nr_varfuri>>this->nr_arce;
+
+        vector <pair<int,int>> muchii[nr_arce+2];
+        int heap[nr_varfuri+2];
+        int costuri[nr_varfuri+2];
+        int tati[nr_varfuri+2];
+        int poz_in_heap[nr_varfuri+2];
+        int heap_lenght = 0;
+
+        for (int i=1;i<=nr_varfuri;i++)
+        {
+            costuri[i] = 1000001;
+            tati[i] = -1;
+        }
+
+        int a,b,c;
+        for (int i=0;i<this->nr_arce;i++)
+        {
+            fin>>a>>b>>c;
+            muchii[a].push_back(make_pair(b,c));
+        }
+
+        costuri[1] = 0;
+        poz_in_heap[1] = -1;
+        Update_Cost2(1,muchii,costuri,tati);
+
+        for (int i=2;i<=nr_varfuri;i++)
+        {
+            heap_lenght++;
+            heap[heap_lenght] = i;
+            poz_in_heap[i] = heap_lenght;
+            Shift_Up(heap_lenght,heap,costuri,poz_in_heap);
+        }
+
+        for (int i=2;i<=nr_varfuri;i++)
+        {
+            int rad_crt = heap[1];
+            swap(heap[1],heap[heap_lenght]);
+            swap(poz_in_heap[heap[1]],poz_in_heap[heap[heap_lenght]]);
+            heap_lenght--;
+            Shift_Down(1,heap,costuri,poz_in_heap,heap_lenght);
+            poz_in_heap[rad_crt] = -1;
+
+            Update_Cost2(rad_crt,muchii,costuri,tati);
+            int rad_crt_vec = muchii[rad_crt].size();
+            for (int j=0;j<rad_crt_vec;j++)
+            {
+                int vec_crt = muchii[rad_crt][j].first;
+                if (poz_in_heap[vec_crt] != -1)
+                    Shift_Up(poz_in_heap[vec_crt],heap,costuri,poz_in_heap);
+            }
+        }
+
+        for (int i=2;i<=nr_varfuri;i++)
+        {
+            if (costuri[i] == 1000001)
+                fout<<0<<" ";
+            else fout<<costuri[i]<<" ";
+        }
+
+        fin.close();
+        fout.close();
+    }
+
+    // Bellman-Ford
+
+    void Bellman()
+    {
+        ifstream fin("bellmanford.in");
+        ofstream fout("bellmanford.out");
+
+        fin>>this->nr_varfuri>>this->nr_arce;
+        vector <pair<int,int>> muchii[nr_arce+2];
+        queue <int> coada;
+        int ver = 0;
+        int costuri[nr_varfuri+2];
+        int tati[nr_varfuri+2];
+
+        for (int i=1;i<=nr_varfuri;i++)
+        {
+            costuri[i] = 1000001;
+            tati[i] = -1;
+            coada.push(i);
+        }
+
+        int a,b,c;
+        for (int i=0;i<this->nr_arce;i++)
+        {
+            fin>>a>>b>>c;
+            muchii[a].push_back(make_pair(b,c));
+        }
+
+        costuri[1] = 0;
+        int contor = 0;
+        while (!coada.empty())
+        {
+            int i = coada.front();
+            int i_size = muchii[i].size();
+            for (int j=0;j<i_size;j++)
+            {
+                int vecin = muchii[i][j].first;
+                int cost = muchii[i][j].second;
+                if (costuri[vecin] > costuri[i] + cost)
+                {
+                    coada.push(vecin);
+                    costuri[vecin] = costuri[i]+cost;
+                    tati[vecin] = i;
+                }
+            }
+            coada.pop();
+            contor++;
+            if (contor == nr_varfuri*nr_arce && !coada.empty())
+            {
+                ver = 1;
+                break;
+            }
+        }
+
+        if (ver == 0)
+        {
+            for (int i=2;i<=nr_varfuri;i++)
+                fout<<costuri[i]<<" ";
+        }
+        else fout<<"Ciclu negativ!\n";
+
+        fin.close();
+        fout.close();
+    }
+
+    // Disjoint
+
+    void Disjoint()
+    {
+        ifstream fin("disjoint.in");
+        ofstream fout("disjoint.out");
+
+        fin>>nr_varfuri>>nr_arce;
+
+        int padure[nr_varfuri+2][3];
+
+        for (int i=1;i<=nr_varfuri;i++)
+        {
+            padure[i][0] = i; // Parent
+            padure[i][1] = 1; // Size
+        }
+
+        for (int i=1;i<=nr_arce;i++)
+        {
+            int a,b,c;
+            fin>>a>>b>>c;
+
+            b = padure[b][0];
+            while (b!=padure[b][0])
+                b = padure[b][0];
+            c = padure[c][0];
+            while (c!=padure[c][0])
+                c = padure[c][0];
+
+            if (a == 1)
+            {
+                if (b != c)
+                {
+                    if (padure[b][1] < padure[c][1])
+                        swap(b,c);
+
+                    padure[c][0] = b;
+                    padure[b][1] += padure[c][1];
+                }
+            }
+            else
+            {
+                if (b == c)
+                    fout<<"DA\n";
+                else fout<<"NU\n";
+            }
+        }
+
+        fin.close();
+        fout.close();
+    }
+
 };
 
 Graf *Graf::graf = nullptr;
-
 Graf *Graf::GetGraf()
 {
     if (graf == nullptr)
@@ -535,6 +859,6 @@ Graf *Graf::GetGraf()
 
 int main()
 {
-    Graf::GetGraf()->SrtTop();
+    Graf::GetGraf()->PctCritice();
     return 0;
 }
