@@ -1,6 +1,7 @@
 #include <bits/stdc++.h>
 using namespace std;
 #define nr 100002
+#define nr2 1002
 
 class Graf
 {
@@ -16,7 +17,6 @@ private:
     int nr_varfuri;
     int nr_arce;
     static Graf* graf;
-
 
     // Support functions
 
@@ -114,7 +114,7 @@ private:
                 DF3(nr_vcn,vizitat,dfn,low,arce,muchii_critice);
 
                 low[n] = min(low[n],low[nr_vcn]);
-                if (low[nr_vcn] > dfn[n])
+                if (low[nr_vcn] >= dfn[n])
                 {
                     muchii_critice.push_back(make_pair(n,nr_vcn));
                 }
@@ -183,6 +183,63 @@ private:
                 tati[vecin] = n;
             }
         }
+    }
+
+    void DF4(const int i,const vector<int> arce[],bool vizitat[],int distanta[],int &diametru)
+    {
+        vizitat[i] = false;
+        int size_arce = arce[i].size();
+        for (int j=0;j<size_arce;j++)
+        {
+            int nod_vec = arce[i][j];
+            if (vizitat[nod_vec])
+            {
+                distanta[nod_vec] = distanta[i] + 1;
+                if (distanta[nod_vec] > diametru)
+                {
+                    diametru = distanta[nod_vec];
+                }
+                DF4(nod_vec,arce,vizitat,distanta,diametru);
+            }
+        }
+    }
+
+    int BF2(const int capacitate[][nr2],const int flux[][nr2],int parinte[],vector<int> arce[])
+    {
+        int flow_max = nr;
+        for (int i=1;i<=nr_varfuri;i++)
+        {
+            parinte[i] = -1;
+        }
+        parinte[1] = -2;
+
+        queue<int> coada;
+        coada.push(1);
+        while (!coada.empty())
+        {
+            int nod_crt = coada.front();
+            coada.pop();
+
+            int vec_size = arce[nod_crt].size();
+            for (int i=0;i<vec_size;i++)
+            {
+                int vec_crt = arce[nod_crt][i];
+                if (capacitate[nod_crt][vec_crt] - flux[nod_crt][vec_crt] > 0 && parinte[vec_crt] == -1)
+                {
+                    parinte[vec_crt] = nod_crt;
+                    flow_max = min(flow_max,capacitate[nod_crt][vec_crt] - flux[nod_crt][vec_crt]);
+                    if (vec_crt != nr_varfuri)
+                    {
+                        coada.push(vec_crt);
+                    }
+                    else
+                    {
+                        return flow_max;
+                    }
+                }
+            }
+        }
+        return 0;
     }
 
 public:
@@ -741,12 +798,10 @@ public:
         queue <int> coada;
         int ver = 0;
         int costuri[nr_varfuri+2];
-        int tati[nr_varfuri+2];
 
         for (int i=1;i<=nr_varfuri;i++)
         {
             costuri[i] = 1000001;
-            tati[i] = -1;
             coada.push(i);
         }
 
@@ -771,7 +826,6 @@ public:
                 {
                     coada.push(vecin);
                     costuri[vecin] = costuri[i]+cost;
-                    tati[vecin] = i;
                 }
             }
             coada.pop();
@@ -846,6 +900,181 @@ public:
         fout.close();
     }
 
+    // Darb
+
+    int Darb()
+    {
+        ifstream fin("darb.in");
+        ofstream fout("darb.out");
+        fin>>nr_varfuri;
+        nr_arce = nr_varfuri-1;
+
+        bool vizitat[nr_varfuri+2];
+        for (int i=0;i<=this->nr_varfuri;i++)
+        {
+            vizitat[i] = false;
+        }
+        int distanta[nr_varfuri+2];
+        vector<int> arce[nr_varfuri+2];
+
+        int a,b;
+        for (int i=0;i<nr_arce;i++)
+        {
+            fin>>a>>b;
+            arce[a].push_back(b);
+            arce[b].push_back(a);
+        }
+
+        queue<int> coada;
+        int ultimul;
+        coada.push(1);
+        vizitat[1] = true;
+
+
+        while (!coada.empty())
+        {
+            int nod_crt = coada.front();
+            coada.pop();
+            int size_arce = arce[nod_crt].size();
+            for (int i=0;i<size_arce;i++)
+            {
+                int nod_vec = arce[nod_crt][i];
+                if (!vizitat[nod_vec])
+                {
+                    coada.push(nod_vec);
+                    vizitat[nod_vec] = true;
+                    ultimul = nod_vec;
+                }
+            }
+        }
+
+
+        distanta[ultimul] = 1;
+        int diametru = 0;
+        DF4(ultimul,arce,vizitat,distanta,diametru);
+        fout<<diametru;
+
+        fin.close();
+        fout.close();
+        return diametru;
+    }
+
+    // Roy-Floyd
+
+    void Roy()
+    {
+        ifstream fin("royfloyd.in");
+        ofstream fout("royfloyd.out");
+
+        fin>>nr_varfuri;
+
+        int distanta[nr_varfuri+2][nr_varfuri+2];
+        for (int i=0;i<nr_varfuri;i++)
+        {
+            for (int j=0;j<nr_varfuri;j++)
+            {
+                int dist;
+                fin>>dist;
+                if (dist == 0 && i!=j)
+                {
+                    distanta[i][j] = 1001;
+                }
+                else
+                {
+                    distanta[i][j] = dist;
+                }
+            }
+        }
+
+        for (int k=0;k<nr_varfuri;k++)
+        {
+            for (int i=0;i<nr_varfuri;i++)
+            {
+                for (int j=0;j<nr_varfuri;j++)
+                {
+                    if (i == j) continue;
+                    distanta[i][j] = min(distanta[i][j],distanta[i][k]+distanta[k][j]);
+                }
+            }
+        }
+
+        cout<<"\n> Raspunsul este : \n";
+
+        for (int i=0;i<nr_varfuri;i++)
+        {
+            for (int j=0;j<nr_varfuri;j++)
+            {
+                if (distanta[i][j] == 1001)
+                {
+                    fout<<0<<' ';
+                    fout<<0<<' ';
+                }
+                else
+                {
+                    fout<<distanta[i][j]<<' ';
+                    cout<<distanta[i][j]<<' ';
+                }
+            }
+            fout<<"\n";
+            cout<<"\n";
+        }
+
+        fin.close();
+        fout.close();
+    }
+
+    // Max Flow
+
+    int Flow()
+    {
+        ifstream fin("maxflow.in");
+        ofstream fout("maxflow.out");
+
+        fin>>nr_varfuri>>nr_arce;
+        int flux[nr_varfuri+2][nr2];
+        int capacitate[nr_varfuri+2][nr2];
+        vector<int> arce[nr_varfuri+2];
+        int flow = 0;
+
+        int x,y,z;
+        for (int i=0;i<nr_arce;i++)
+        {
+            fin>>x>>y>>z;
+            capacitate[x][y] = z;
+            capacitate[y][x] = 0;
+            flux[x][y] = 0;
+            flux[y][x] = 0;
+            arce[y].push_back(x);
+            arce[x].push_back(y);
+        }
+
+        int parinte[nr_varfuri+2];
+        while(true)
+        {
+            int flow_max = BF2(capacitate,flux,parinte,arce);
+            if (flow_max == 0)
+            {
+                break;
+            }
+
+            flow += flow_max;
+            int i = nr_varfuri;
+            while (i != 1)
+            {
+                int vec = parinte[i];
+                flux[i][vec] -= flow_max;
+                flux[vec][i] += flow_max;
+                i = vec;
+            }
+        }
+
+        fout<<flow;
+
+        fin.close();
+        fout.close();
+        return flow;
+    }
+
 };
 
 Graf *Graf::graf = nullptr;
@@ -857,8 +1086,141 @@ Graf *Graf::GetGraf()
     return graf;
 }
 
+void Meniu()
+{
+    cout<<"  ____________________\n";
+    cout<<" |       Meniu       |\n";
+    cout<<" |-------------------|\n";
+    cout<<" |      (1) BFS      |\n";
+    cout<<" |-------------------|\n";
+    cout<<" |      (2) DFS      |\n";
+    cout<<" |-------------------|\n";
+    cout<<" |    (3) Biconex    |\n";
+    cout<<" |-------------------|\n";
+    cout<<" |      (4) CTC      |\n";
+    cout<<" |-------------------|\n";
+    cout<<" | (5) Havel-Hakimi  |\n";
+    cout<<" |-------------------|\n";
+    cout<<" |  (6) Pct Critice  |\n";
+    cout<<" |___________________|\n";
+    cout<<" |   (7) Sort Top    |\n";
+    cout<<" |___________________|\n";
+    cout<<" |  (8) APM - Prim   |\n";
+    cout<<" |___________________|\n";
+    cout<<" |  (9) Dijkstra     |\n";
+    cout<<" |___________________|\n";
+    cout<<" | (10) Bellman-Ford |\n";
+    cout<<" |___________________|\n";
+    cout<<" |  (11) Disjoint    |\n";
+    cout<<" |___________________|\n";
+    cout<<" |    (12) Darb      |\n";
+    cout<<" |___________________|\n";
+    cout<<" |  (13) Roy-Floyd   |\n";
+    cout<<" |___________________|\n";
+    cout<<" |  (14) Max Flow    |\n";
+    cout<<" |___________________|\n";
+
+    int Raspuns;
+    jump:
+    cout<<"\n> ";
+    cin>>Raspuns;
+
+    if (Raspuns == 1)
+    {
+        Graf::GetGraf()->BFS();
+        cout<<"\n> Datele de intrare au fost preluate din bfs.in";
+        cout<<"\n> Raspunsul a fost exportat in bfs.out";
+    }
+    else if (Raspuns == 2)
+    {
+        Graf::GetGraf()->DFS();
+        cout<<"\n> Datele de intrare au fost preluate din dfs.in";
+        cout<<"\n> Raspunsul a fost exportat in dfs.out";
+    }
+    else if (Raspuns == 3)
+    {
+        Graf::GetGraf()->Biconex();
+        cout<<"\n> Datele de intrare au fost preluate din biconex.in";
+        cout<<"\n> Raspunsul a fost exportat in biconex.out";
+    }
+    else if (Raspuns == 4)
+    {
+        Graf::GetGraf()->TareConexe();
+        cout<<"\n> Datele de intrare au fost preluate din ctc.in";
+        cout<<"\n> Raspunsul a fost exportat in ctc.out";
+    }
+    else if (Raspuns == 5)
+    {
+        Graf::GetGraf()->Hakimi();
+        cout<<"\n> Datele de intrare au fost preluate din hakimi.in";
+        cout<<"\n> Raspunsul a fost exportat in hakimi.out";
+    }
+    else if (Raspuns == 6)
+    {
+        Graf::GetGraf()->PctCritice();
+        cout<<"\n> Datele de intrare au fost preluate din pctcritice.in";
+        cout<<"\n> Raspunsul a fost exportat in pctcritice.out";
+    }
+    else if (Raspuns == 7)
+    {
+        Graf::GetGraf()->SrtTop();
+        cout<<"\n> Datele de intrare au fost preluate din sortaret.in";
+        cout<<"\n> Raspunsul a fost exportat in sortaret.out";
+    }
+    else if (Raspuns == 8)
+    {
+        Graf::GetGraf()->Prim();
+        cout<<"\n> Datele de intrare au fost preluate din apm.in";
+        cout<<"\n> Raspunsul a fost exportat in apm.out";
+    }
+    else if (Raspuns == 9)
+    {
+        Graf::GetGraf()->Dijkstra();
+        cout<<"\n> Datele de intrare au fost preluate din dijkstra.in";
+        cout<<"\n> Raspunsul a fost exportat in dijkstra.out";
+    }
+    else if (Raspuns == 10)
+    {
+        Graf::GetGraf()->Bellman();
+        cout<<"\n> Datele de intrare au fost preluate din bellmanford.in";
+        cout<<"\n> Raspunsul a fost exportat in bellmanford.out";
+    }
+    else if (Raspuns == 11)
+    {
+        Graf::GetGraf()->Disjoint();
+        cout<<"\n> Datele de intrare au fost preluate din disjoint.in";
+        cout<<"\n> Raspunsul a fost exportat in disjoint.out";
+    }
+    else if (Raspuns == 12)
+    {
+
+        cout<<"\n> Datele de intrare au fost preluate din darb.in";
+        cout<<"\n> Raspunsul este : "<<Graf::GetGraf()->Darb();
+        cout<<"\n> Raspunsul a fost exportat in darb.out";
+    }
+    else if (Raspuns == 13)
+    {
+        cout<<"\n> Datele de intrare au fost preluate din royfloyd.in";
+        Graf::GetGraf()->Roy();
+        cout<<"\n> Raspunsul a fost exportat in royfloyd.out";
+    }
+    else if (Raspuns == 14)
+    {
+        Graf::GetGraf()->Flow();
+        cout<<"\n> Datele de intrare au fost preluate din maxflow.in";
+        cout<<"\n> Raspunsul este : "<<Graf::GetGraf()->Flow();
+        cout<<"\n> Raspunsul a fost exportat in maxflow.out";
+    }
+    else
+    {
+        cout<<"\n> Comanda inexistenta\n";
+        goto jump;
+    }
+    cout<<"\n\n";
+}
+
 int main()
 {
-    Graf::GetGraf()->PctCritice();
+    Meniu();
     return 0;
 }
