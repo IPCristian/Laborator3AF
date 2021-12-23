@@ -16,7 +16,7 @@ private:
         this->afisare = 1;
         Citire_Graf();
     }
-    Graf(const int n,const int m,const bool ori,vector<int> muchii[])
+    Graf(const int n,const int m,const bool ori,vector<int> muchii[]) // Numar noduri, Numar muchii, Orientat (1/0), Vector Muchii
     {
         this->nr_varfuri = n;
         this->nr_arce = m;
@@ -399,7 +399,6 @@ public:
 
     static Graf *GetGraf();
     static Graf *GetGraf(const int,const int,const bool ori,vector<int>[]);
-    static Graf *GetGraf(const int,const int,const bool ori);
 
     // BFS
 
@@ -1486,7 +1485,7 @@ void Rezultat_CEul()
     fout.close();
 }
 
-void Rezultat_Cuplaj() // 30 Pct Infoarena -> Raspuns corect la toate testele, Timpul de executie mult peste limita
+void Rezultat_Cuplaj()
 {
     ifstream fin("cuplaj.in");
     ofstream fout("cuplaj.out");
@@ -1670,7 +1669,7 @@ void Meniu()
     else if (Raspuns == 14)
     {
         cout<<"\n> Datele de intrare suplimentare au fost preluate din maxflow.in";
-
+        Rezultat_MaxFlow();
         cout<<"\n> Raspunsul a fost exportat si in maxflow.out";
     }
     else if (Raspuns == 15)
@@ -1690,17 +1689,8 @@ void Meniu()
     }
 }
 
-
 int main()
 {
-    /*
-    // Pentru afisare tastatura + ecran
-
-    Graf::GetGraf();
-    Meniu();
-    */
-
     Rezultat_Cuplaj();
-
     return 0;
 }
